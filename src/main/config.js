@@ -41,6 +41,7 @@ const DEFAULTS = {
   pcReact: true,     // she reacts to your PC: the processor at full tilt, the battery, the network, a USB stick, a game (pc.js)
   watchScreen: false, // she looks at your screen now and then and says something about it (look.js)
   lookAsked: false,  // she told you what looking means (where the picture goes) and you said yes
+  capriMode: 'code_viewer', // her mode: 'code_viewer' (the calm one, everything she does now) or 'companion' (she reaches into your apps)
 };
 
 let cache = null;

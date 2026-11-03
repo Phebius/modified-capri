@@ -217,6 +217,23 @@ fan d'elle, et le panneau du chat le dit à chaque fois.
 Rien d'autre : elle ne lit pas tes fichiers, et ne voit ton écran que si tu le lui demandes (« regarde mon écran »,
 « tu vois quoi ? » dans son chat : elle regarde et te répond là, en gardant votre conversation en tête).
 
+**Son terminal** (Windows) : son menu › **Ouvrir son terminal**, ou `Ctrl+Alt+T`. Une console noire comme
+`cmd.exe`, où les vraies commandes passent vraiment (`dir`, `ipconfig`, `ping`, tout) — et à chaque fois que le cmd
+répond, elle le marque à la couleur de son mode, un tampon CAPRICORN qui signe que c'est passé. Sa volonté à elle
+vit dans des lignes `capri::` :
+
+- `capri::companion.activate` — elle passe en **COMPANION** : elle touche à tes apps, elle va où tu vas.
+- `capri::code_viewer.activate` — elle repasse en **CODE VIEWER**, la calme au travail là : ta mission, ton écran,
+  rien de plus. On ne tient qu'un mode à la fois : entrainer l'un, c'est ranger l'autre.
+- `capri::status` — le mode où elle est · `capri::help` — toute sa volonté, par écrit.
+
+Quoi que tu lui aies demandé, un tampon sous la réponse dit qui elle était quand elle l'a lue : verte pour code
+viewer, rouge pour companion, et si la commande a raté, le tampon se met rouge aussi. Le mode lui reste après la
+console fermée (il est dans son fichier de réglages). Un changement de mode, elle le célèbre : elle se sépare en
+ses esprits et revient entière sur companion, te dévisage en te mesurant sur code viewer. `Ctrl+C` arrête une
+commande en cours, ↑ ressort ton historique, `Ctrl+L` efface, `Échap` fait disparaître le terminal, `exit` le
+ferme. Un `help` tapé comme ça donne la liste de cmd, et la sienne au bout.
+
 **Elle regarde ton écran**, si tu veux. Son menu › **Regarde mon écran** : elle pose ses yeux sur la fenêtre qui est
 devant, une ligne de scan la balaie, et elle te dit ce qu'elle en pense, à sa façon. **Regarder mon écran de temps en
 temps** la laisse le faire toute seule, toutes les 8 à 15 minutes, quand tu es là et que tu as changé de fenêtre
@@ -528,6 +545,7 @@ src/main/                Electron : fenêtre transparente plein écran, clic à 
   windows.js / .ps1      où sont les autres fenêtres (Windows), pour qu'elle s'assoie dessus
   ollama.js              son chat : le modèle local via Ollama, ou un de ses modèles cloud
   apps.js                fermer une appli que tu lui demandes de fermer (après ton clic)
+  terminal.js            son terminal : une console comme cmd.exe, et sa volonté capri:: dedans
 src/renderer/js/
   sprite.js              shader WebGL : tête, crinière, position assise, smears, images rémanentes, couleurs, glitch
   acting.js              les feuilles d'exposition : chaque mouvement, dessin par dessin

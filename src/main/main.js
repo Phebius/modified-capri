@@ -18,6 +18,7 @@ const { CapriSpeech } = require('./speech');
 const llm = require('./llm');
 const ollama = require('./ollama');
 const setup = require('./setup');
+const terminal = require('./terminal');
 const apps = require('./apps');
 const system = require('./system');
 const launch = require('./launch');
@@ -340,6 +341,7 @@ function rebuildTray() {
     { label: t.help, click: () => sendCommand('welcome') },
     ...(cfg.claude ? [{ label: t.report, click: () => sendCommand('report') }] : []),
     { label: t.talk, click: () => sendCommand('chat') },
+    { label: t.terminal, click: () => terminal.toggle() },
     { label: t.lookNow, click: () => sendCommand('look') },
     {
       label: t.reminders,
@@ -1015,6 +1017,14 @@ async function debugHandler(route, body) {
     // a look inside the overlay (app.js puts what's there on window.dev in --dev)
     return { ok: true, value: await overlay.webContents.executeJavaScript(String(body.js || 'null')) };
   }
+  if (route === 'term') {
+    // one of her capri:: lines, inside the test: her mode follows (config, tray, her own reaction)
+    return { ok: true, value: terminal.debug(body.text) };
+  }
+  if (route === 'termeval') {
+    // her terminal window, seen from the test: open it first (\debug\menu, Open her terminal)
+    return { ok: true, value: await terminal.evalIn(body.js) };
+  }
   if (route === 'drag') {
     // a drag over the overlay with a stand-in pointer, the real one untouched: the button goes down
     // at the first point, follows the others (each `ms` after the one before), and comes up at the last
@@ -1097,6 +1107,18 @@ function main() {
       onDebug: DEV ? debugHandler : null,
     });
     globalShortcut.register('Control+Alt+C', () => toggleVisible());
+    globalShortcut.register('Control+Alt+T', () => terminal.toggle());
+    terminal.init({
+      // the screen she's on hosts the window; her menu opened it, so it may take the focus
+      workArea: () => targetDisplay().workArea,
+      mode: () => config.load().capriMode || 'code_viewer',
+      setMode: (mode) => updateConfig({ capriMode: mode }),
+      // whatever her terminal answered, Capri in the overlay signs that she heard
+      onResult: (result) => sendCommand('terminalPulse', {
+        capriCommand: Boolean(result.capri),
+        mode: result.mode || config.load().capriMode || 'code_viewer',
+      }),
+    });
     llm.restoreClaude(readMemory().claude);
     refreshModels(); // for her menu's model list
     setTimeout(() => launch.launchables().catch(() => {}), 20000); // what she can open, before you ask
@@ -1120,6 +1142,7 @@ function main() {
     windowWatch?.stop();
     capriSpeech?.dispose();
     capriSpeech = null;
+    terminal.dispose();
   });
   app.on('window-all-closed', (e) => e.preventDefault());
 }

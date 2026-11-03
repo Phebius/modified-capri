@@ -72,6 +72,30 @@ const FISH_SETUP_TEXT = {
   },
 };
 
+// her modes, of the terminal (capri::...): where she stands, in her own words, in every language
+const MODE_TEXT = {
+  fr: {
+    companion: { face: 'many', line: 'Mode COMPANION. Je touche à tes apps, je m\'y faufil à ta place. Dis-moi ce que je fais.' },
+    code_viewer: { face: 'calm', line: 'Mode CODE VIEWER. Je reste posée : ta mission, ton écran, et rien de plus.' },
+  },
+  en: {
+    companion: { face: 'many', line: 'COMPANION mode. I reach into your apps and ride along with you. Say the word.' },
+    code_viewer: { face: 'calm', line: 'CODE VIEWER mode. I settle in: your mission, your screen, nothing more.' },
+  },
+  es: {
+    companion: { face: 'many', line: 'Modo COMPANION. Me meto en tus apps y voy contigo. Tú dirás.' },
+    code_viewer: { face: 'calm', line: 'Modo CODE VIEWER. Me quedo serena: tu misión, tu pantalla, nada más.' },
+  },
+  pt: {
+    companion: { face: 'many', line: 'Modo COMPANION. Enrolo os apps e sigo junto com você. Só pede.' },
+    code_viewer: { face: 'calm', line: 'Modo CODE VIEWER. Fico de boa: sua missão, sua tela, nada além.' },
+  },
+  ru: {
+    companion: { face: 'many', line: 'Режим COMPANION. Проникаю в твои приложения и хожу с тобой. Скажи слово.' },
+    code_viewer: { face: 'calm', line: 'Режим CODE VIEWER. Спокойно: миссия, экран — и больше ничего.' },
+  },
+};
+
 // what you made her, from the config (custom.js)
 const mine = (cfg) => ({ userName: cfg.userName || '', persona: cfg.persona || '', myLines: cfg.myLines || [], memories: cfg.memories || [] });
 
@@ -101,7 +125,6 @@ async function boot() {
     document.documentElement.dataset.theme = theme || 'nightcity';
   };
   applyTheme(config.theme);
-
   const fx = new FxLayer(document.getElementById('fx'), {
     cutins: Object.fromEntries(CUTINS.map((name, i) => [name, cutins[i]])),
     intro,
@@ -110,6 +133,25 @@ async function boot() {
   // how far the top of the taskbar is from the bottom of her window: she covers it too while she
   // rests on it (the floor she stands on stays its top)
   let floorGap = config.floorGap ?? 0;
+  // her mode, of the terminal: the mode she stands in until capri::... switches her (config changes
+  // reach her here; a fresh one deserves her own arrival)
+  let capriMode = config.capriMode || 'code_viewer';
+  const modeIn = (name, { quiet = false } = {}) => {
+    const text = MODE_TEXT[brain.lang] || MODE_TEXT.en;
+    const pickMode = text[name] || text.code_viewer;
+    if (name === 'companion') capri.perform('split'); // she breaks into her minds and comes back whole: her mode did too
+    else capri.perform('curious', capri.towardCenter());
+    if (!quiet) {
+      panel.say({
+        kind: 'info',
+        face: pickMode.face,
+        tag: `CAPRICORN // ${name.toUpperCase()}`,
+        line: pickMode.line,
+        speak: false,
+        hold: 7000,
+      });
+    }
+  };
   const chip = new Chip(document.getElementById('chip'));
   chip.place(innerWidth, innerHeight - floorGap);
   const mask = new Mask(document.getElementById('mask'));
@@ -677,6 +719,11 @@ async function boot() {
     capri.restOn = cfg.rest || 'corner';
     applyMotion(cfg.motion);
     applyTheme(cfg.theme);
+    // her mode, from the terminal: capri::... switched her, and she arrives as it
+    if ((cfg.capriMode || 'code_viewer') !== capriMode) {
+      capriMode = cfg.capriMode || 'code_viewer';
+      modeIn(capriMode);
+    }
     if ((cfg.claude === false && brain.watching) || cfg.assistant !== brain.assistant) {
       guide.answer(null);
       panel.hide();
@@ -780,6 +827,12 @@ async function boot() {
       case 'look': // "Look at my screen" in her menu: once, now
         look.once();
         break;
+      case 'terminalPulse': { // whatever her terminal answered, she signs that she heard — small,
+        // only when she's free to stop, and only a hand's worth of her mode: red for companion
+        if (capri.busy || capri.dragging || capri.stowed || capri.dormant || capri.hidden || capri.act || capri.mode === 'sleep' || capri.mode === 'alert') break;
+        capri.perform(cmd.mode === 'companion' ? 'zap' : 'look', capri.towardCenter());
+        break;
+      }
       case 'watchScreen': // "Look at my screen now and then" in her menu
         look.setAuto(cmd.on);
         break;

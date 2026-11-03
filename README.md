@@ -207,6 +207,21 @@ panel says so every time.
 Nothing else: she doesn't read your files, and only sees your screen when you ask ("look at my screen", "what do you
 see?" in her chat: she looks and answers right there, your conversation in mind).
 
+**Her terminal** (Windows): her menu › **Open her terminal**, or `Ctrl+Alt+T`. A black console like `cmd.exe`,
+where real commands really run (`dir`, `ipconfig`, `ping`, the works) — and each time the cmd answers, she stamps
+it in her mode's colour, CAPRICORN signing that it went through. Her own will lives in `capri::` lines:
+
+- `capri::companion.activate` — she switches to **COMPANION**: she reaches into your apps, she goes where you go.
+- `capri::code_viewer.activate` — she switches back to **CODE VIEWER**, the calm one at work now: your mission,
+  your screen, nothing more. Switching one in switches the other off: one mode at a time.
+- `capri::status` — the mode she stands in · `capri::help` — her whole will, in writing.
+
+Whatever you asked her, a stamp under the answer says who she was when she read it: green for code viewer, red for
+companion, and if the command failed, the stamp goes red too. The mode stays hers after the console closes (it's in
+her settings file). She signs a mode switch herself: she splits into her minds and comes back whole on companion,
+looks you up and down on code viewer. `Ctrl+C` stops a running command, ↑ walks your history, `Ctrl+L` clears,
+`Escape` tucks the terminal away, `exit` closes it. Typed `help` gets you cmd's list, and hers at the end.
+
 **She looks at your screen**, if you want. Her menu › **Look at my screen**: her eyes go to the window in front, a
 scanline sweeps it, and she tells you what she makes of it, her way. **Look at my screen now and then** lets her do it
 on her own, every 8 to 15 minutes, when you're there and you've switched windows (off until you tick it). The first
@@ -502,6 +517,7 @@ src/main/                Electron: full-screen transparent click-through window,
   windows.js / .ps1      where the other windows are (Windows only), so she can sit on them
   ollama.js              her chat: the local model through Ollama, or one of its cloud models
   apps.js                closing an app you asked her to close (after your click)
+  terminal.js            her terminal: a console like cmd.exe, and her own capri:: will in it
 src/renderer/js/
   sprite.js              WebGL shader: head tilt, mane flare, sitting, smears, afterimages, colors, glitch
   acting.js              the exposure sheets: every move, drawing by drawing

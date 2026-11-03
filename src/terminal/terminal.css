@@ -1,0 +1,96 @@
+/* Terminal Capri: a Windows console (black, Consolas, white on black), and CAPRICORN in the corners:
+   whatever the cmd answers, she stamps it in her mode's colour — green while she's calm,
+   red when companion has her — with a little glitch, like her HUD breathing through. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0c0c0c;
+  color: #cccccc;
+  font: 13px/1.45 'Cascadia Mono', Consolas, 'Courier New', monospace;
+}
+
+#term {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  cursor: text;
+}
+
+.term__lines { white-space: pre-wrap; overflow-wrap: break-word; }
+.term__lines > div { min-height: 1.45em; }
+
+.term__row { display: flex; margin: 0; }
+
+.term__prompt { color: #cccccc; white-space: pre; }
+
+#input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: #cccccc;
+  font: inherit;
+  padding: 0;
+}
+
+/* lines and kinds */
+.out { color: #cccccc; }
+.err { color: #e25a5a; }
+.dim { color: #8f8aa3; }
+.hl { color: #36ff7a; }
+.title { color: #ff4f79; letter-spacing: 0.08em; }
+
+/* the welcome: cmd's own two lines, then she signs hers */
+.hello .capricorn { color: #ff4f79; letter-spacing: 0.06em; }
+.hello .tip { color: #8f8aa3; }
+
+/* what a command typed back in, echoed the way cmd echoes it */
+.echoed { color: #cccccc; white-space: pre; }
+
+/* the stamp: whenever the cmd answers, her mode signs under it */
+.stamp {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 2px 0 6px;
+  padding: 2px 10px 2px 12px;
+  border-left: 3px solid var(--cap, #36ff7a);
+  color: var(--cap, #36ff7a);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+.stamp b { font-weight: 600; }
+.stamp span { color: #8f8aa3; letter-spacing: 0.02em; }
+.stamp.is-companion { --cap: #ff2a4a; }
+.stamp.is-code_viewer { --cap: #36ff7a; }
+.stamp.is-error { --cap: #e25a5a; }
+
+/* a mode switching in: the banner CAPRICORN draws around it */
+.banner {
+  margin: 6px 0 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--cap, #36ff7a);
+  color: var(--cap, #36ff7a);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--cap, #36ff7a) 18%, transparent);
+}
+.banner.is-companion { --cap: #ff2a4a; }
+.banner.is-code_viewer { --cap: #36ff7a; }
+.banner .banner__title { font-size: 12px; letter-spacing: 0.22em; }
+.banner .banner__line { color: #cccccc; font-size: 12px; margin-top: 3px; }
+
+/* her arrivals and her stamps glitch once, slices knocked sideways, then settle */
+.stamp, .banner { animation: capricorn-glitch 0.34s steps(2) 2; }
+@keyframes capricorn-glitch {
+  0%, 100% { transform: translate(0, 0); opacity: 1; }
+  25% { transform: translate(2px, -1px); opacity: 0.86; }
+  50% { transform: translate(-2px, 1px); opacity: 0.92; }
+  75% { transform: translate(1px, 0); opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp, .banner { animation: none; }
+}
