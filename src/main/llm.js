@@ -131,9 +131,27 @@ let claudeStarted = false; // each message after the first continues the same co
 
 function claudeVersion() {
   return new Promise((resolve, reject) => {
-    execFile('claude', ['--version'], { shell: process.platform === 'win32', timeout: 10000 }, (err, out) => (
+    execCli('claude', ['--version'], { timeout: 10000 }, (err, out) => (
       err ? reject(new Error('Claude Code not found (is `claude` on your PATH?)')) : resolve(out.trim())));
   });
+}
+
+// Windows command shims (.cmd) need cmd.exe, but do not use child_process's shell:true.
+// All callers pass fixed CLI names/flags; prompts and other user text travel through stdin.
+function commandArgs(name, args) {
+  return process.platform === 'win32'
+    ? { file: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', [name, ...args].join(' ')] }
+    : { file: name, args };
+}
+
+function execCli(name, args, options, callback) {
+  const command = commandArgs(name, args);
+  execFile(command.file, command.args, { ...options, windowsHide: true }, callback);
+}
+
+function spawnCli(name, args, options) {
+  const command = commandArgs(name, args);
+  return spawn(command.file, command.args, { ...options, windowsHide: true });
 }
 
 function claudeChat(cfg, text, persona, onDelta, signal) {
@@ -146,10 +164,8 @@ function claudeChat(cfg, text, persona, onDelta, signal) {
   if (!claudeSession) claudeSession = randomUUID();
   args.push(claudeStarted ? '--resume' : '--session-id', claudeSession);
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', args, {
+    const child = spawnCli('claude', args, {
       cwd: cfg.claudeCwd || os.homedir(),
-      shell: process.platform === 'win32',
-      windowsHide: true,
     });
     const kill = () => (process.platform === 'win32'
       ? execFile('taskkill', ['/pid', String(child.pid), '/t', '/f'], () => {})
