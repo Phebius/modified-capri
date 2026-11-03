@@ -14,6 +14,7 @@ const config = require('./config');
 const { TRAY, LANGS } = require('./labels');
 const { createBridge } = require('./bridge');
 const { startWindowWatch } = require('./windows');
+const { CapriSpeech } = require('./speech');
 const llm = require('./llm');
 const ollama = require('./ollama');
 const setup = require('./setup');
@@ -42,6 +43,8 @@ let tray = null;
 let trayMenu = null; // also what she opens when you right-click her
 let demoTimer = null;
 let windowWatch = null;
+let capriSpeech = null;
+let fishKeyPrompted = false;
 // the watcher only speaks when something changes: the overlay asks for this when it (re)loads
 let lastWindows = null;
 let chatModels = null; // the provider's models, as last seen (null: not reached)
@@ -221,6 +224,13 @@ function sendCommand(name, payload = {}) {
   overlay?.webContents.send('capri:command', { name, ...payload });
 }
 
+function getCapriSpeech() {
+  capriSpeech ||= new CapriSpeech(app.getPath('userData'), (progress) => {
+    if (overlay && !overlay.isDestroyed()) overlay.webContents.send('speech:progress', progress);
+  });
+  return capriSpeech;
+}
+
 // Ctrl+Alt+C: she folds herself away into her biochip in the corner, or comes back out of it.
 function toggleVisible(force) {
   const visible = typeof force === 'boolean' ? force : !config.load().visible;
@@ -287,6 +297,7 @@ function rendererConfig() {
 
 function updateConfig(patch) {
   config.save(patch);
+  if (patch.spokenVoice === false || patch.muted === true) capriSpeech?.cancel();
   if ('rest' in patch) {
     fitOverlay(); // the taskbar in her window or not
     windowWatch?.refresh();
@@ -351,6 +362,11 @@ function rebuildTray() {
     {
       label: t.sound,
       submenu: [
+        { label: t.spokenVoice, type: 'checkbox', checked: cfg.spokenVoice !== false, click: (item) => updateConfig({ spokenVoice: item.checked }) },
+        { label: t.fishKeyPage, click: () => shell.openExternal('https://fish.audio/app/api-keys/') },
+        { label: t.fishSetup, click: () => sendCommand('fishSetup') },
+        { label: t.fishForget, click: () => sendCommand('fishClear') },
+        { type: 'separator' },
         { label: t.mute, type: 'checkbox', checked: cfg.muted, click: (item) => updateConfig({ muted: item.checked }) },
         { type: 'separator' },
         {
@@ -715,6 +731,25 @@ function registerIpc() {
   ipcMain.handle('config:get', () => rendererConfig());
   ipcMain.handle('hooks:status', () => activeHooks().status());
   ipcMain.handle('config:set', (_e, patch) => updateConfig(patch));
+  ipcMain.handle('speech:fish-key', async (event, key) => {
+    if (event.sender !== overlay?.webContents) return { ok: false, error: 'Fenêtre Capri non autorisée.' };
+    const result = await getCapriSpeech().setApiKey(key);
+    if (result.ok) fishKeyPrompted = false;
+    return result;
+  });
+  ipcMain.handle('speech:speak', async (_e, text) => {
+    const cfg = config.load();
+    if (cfg.spokenVoice === false || cfg.muted) return null;
+    const service = getCapriSpeech();
+    if (!service.hasApiKey()) {
+      if (!fishKeyPrompted) {
+        fishKeyPrompted = true;
+        sendCommand('fishSetup');
+      }
+      return null;
+    }
+    return service.speak(String(text || '').slice(0, 520));
+  });
   ipcMain.handle('demo:window', (_e, open) => demoWindow(open));
   // right-clicking her: the same menu as the tray icon (which Windows often hides behind the ^ by the clock)
   ipcMain.on('menu:open', () => trayMenu?.popup({ window: overlay }));
@@ -1083,6 +1118,8 @@ function main() {
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
     windowWatch?.stop();
+    capriSpeech?.dispose();
+    capriSpeech = null;
   });
   app.on('window-all-closed', (e) => e.preventDefault());
 }

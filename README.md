@@ -358,7 +358,11 @@ It's also in the tray menu, in her language; from the command line it's in Engli
 
 ## Sounds
 
-Every sound is synthesized live (Web Audio), nothing copyrighted ships with the repo.
+Every sound effect is synthesized live (Web Audio), nothing copyrighted ships with the repo.
+Important announcements and chat replies use Fish Audio's hosted TTS service and the voice ID selected for Capri.
+In the tray menu, open **Sound** › **Create Fish Audio key…**, then **Set up Fish Audio key…** and paste your Fish Audio API key; Capri encrypts it
+with the operating system's secure storage. **Speak important announcements** turns speech on or off, and it follows
+the Mute setting. Spoken text is sent to Fish Audio for synthesis; voice requires an internet connection and Fish Audio account access.
 You can drop your own files in the custom sounds folder (tray › Sound › *Open custom sounds folder*),
 named like this (`.mp3`, `.wav`, `.ogg` or `.m4a`):
 
@@ -515,7 +519,8 @@ src/renderer/js/
   files.js               finding your files (Windows search index), screenshots
   lines.js               what she says (FR / EN / ES / PT / RU)
   chip.js                her mask: while she sleeps, and bottom left when you put her away
-  voice.js               the sounds
+  voice.js               sound effects
+  speech.js              Fish Audio TTS for important announcements and chat
 ```
 
 To hack on it: `npm run dev` turns on debug routes on the bridge (`/debug/capture` saves a frame of the window to `captures/`,
@@ -536,4 +541,6 @@ her, change her and share what you made, for free. Selling Capri, or anything ma
 paid access, paid orders), is not allowed. Versions up to 0.4.3 were under the MIT License.
 
 Fonts: Chakra Petch and JetBrains Mono, under the SIL Open Font License, via Fontsource.
+
+Speech uses [Fish Audio](https://fish.audio/developers/) with voice ID `370054c08fe7423190c4bef3c2f1902b`.
 

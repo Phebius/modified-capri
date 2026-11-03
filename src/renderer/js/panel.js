@@ -19,6 +19,7 @@ export const FACES = {
 };
 const KIND_FACE = { alert: 'many', done: 'look', error: 'laugh', work: 'calm', idle: 'calm', report: 'smug', chat: 'look', remind: 'look' };
 const PRIORITY = { info: 1, idle: 1, work: 2, done: 3, error: 3, report: 3, chat: 3, alert: 4, remind: 4 };
+const SPOKEN_KINDS = new Set(['done', 'error', 'report', 'alert', 'remind']);
 const DECODE_STEP_MS = 28;
 const COUNT_MS = 700; // her report's numbers counting up
 
@@ -47,11 +48,14 @@ export class Panel {
     this.tickerTarget = ticker.querySelector('.ticker__target');
     this.current = null;
     this.hideTimer = null;
+    this.speechProgressState = null;
+    this.speechProgressTimer = null;
     this.decodeTimer = null;
     this.anchor = { x: 0, y: 0, side: 1 };
     this.view = { w: innerWidth, h: innerHeight };
     this.onChar = null;    // (mood) => void, for the voice blips
     this.onTalk = null;    // (talking: boolean) => void
+    this.onSpeak = null;   // (text, kind) => void, for important spoken announcements
     this.suspended = false;
     this.tickerAction = null;
     this.tickerShownAt = 0;
@@ -125,6 +129,9 @@ export class Panel {
     cur?.onLeave?.();
     this.current = { ...msg, at: performance.now() };
     clearTimeout(this.hideTimer);
+    clearTimeout(this.speechProgressTimer);
+    this.speechProgressTimer = null;
+    this.speechProgressState = null;
 
     this.el.dataset.kind = msg.kind;
     this.setFace(msg.face || KIND_FACE[msg.kind] || 'grin');
@@ -154,6 +161,10 @@ export class Panel {
     this.place();
     this.decode(msg.line || '', msg.kind);
 
+    if (!msg.guide && msg.speak !== false && (msg.speak === true || SPOKEN_KINDS.has(msg.kind))) {
+      this.onSpeak?.(msg.line, msg.kind);
+    }
+
     if (msg.hold) this.hideTimer = setTimeout(() => this.hide(), msg.hold);
     return true;
   }
@@ -162,6 +173,46 @@ export class Panel {
   setProgress(k) {
     this.progress.hidden = typeof k !== 'number';
     if (!this.progress.hidden) this.bar.style.transform = `scaleX(${clamp(k, 0, 1).toFixed(3)})`;
+  }
+
+  setSpeechProgress(update) {
+    clearTimeout(this.speechProgressTimer);
+    this.speechProgressTimer = null;
+    if (!update || update.phase === 'ready') {
+      if (!this.speechProgressState) return;
+      this.state.textContent = this.speechProgressState.state;
+      this.setProgress(this.current?.progress);
+      const resume = this.speechProgressState.resume;
+      this.speechProgressState = null;
+      if (resume && this.current?.hold && !this.el.hidden) {
+        clearTimeout(this.hideTimer);
+        this.hideTimer = setTimeout(() => this.hide(), this.current.hold);
+      }
+      return;
+    }
+    if (this.el.hidden) return;
+    if (!this.speechProgressState) {
+      this.speechProgressState = { state: this.state.textContent, resume: Boolean(this.hideTimer) };
+      if (this.hideTimer) clearTimeout(this.hideTimer);
+    }
+    if (update.phase === 'error') {
+      const message = String(update.message || '').toLowerCase();
+      this.state.textContent = message.includes('refuse cette clé')
+        ? 'FISH AUDIO · CLÉ REFUSÉE'
+        : message.includes('quota') || message.includes('limité')
+          ? 'FISH AUDIO · QUOTA / LIMITE'
+          : 'FISH AUDIO · ERREUR';
+      this.setProgress(null);
+      this.speechProgressTimer = setTimeout(() => this.setSpeechProgress(null), 6000);
+      return;
+    }
+    if (update.phase === 'fish') {
+      this.state.textContent = 'FISH AUDIO · SYNTHÈSE';
+      this.setProgress(null);
+      return;
+    }
+    this.state.textContent = 'FISH AUDIO · SYNTHÈSE';
+    this.setProgress(null);
   }
 
   // The quote under her line, changed in place (how far a download is), without a new message.
@@ -315,6 +366,7 @@ export class Panel {
     if (!this.current?.chat) return;
     this.streamTo = [...text];
     this.streamDone = done;
+    if (done && this.current.kind === 'chat') this.onSpeak?.(text, 'chat');
     // an answer rewritten rather than added to (a reasoning block cut out, an error): from where they part
     let same = 0;
     const max = Math.min(this.streamShown, this.streamTo.length);
@@ -430,6 +482,9 @@ export class Panel {
 
   hide() {
     clearTimeout(this.hideTimer);
+    clearTimeout(this.speechProgressTimer);
+    this.speechProgressTimer = null;
+    this.speechProgressState = null;
     clearInterval(this.decodeTimer);
     this.stopStream();
     this.onTalk?.(false);

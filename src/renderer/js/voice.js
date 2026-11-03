@@ -18,6 +18,8 @@ export class Voice {
     this.volume = 0.7;
     this.custom = new Map(); // cue -> AudioBuffer
     this.lastBlip = 0;
+    this.speechSource = null;
+    this.speechToken = 0;
   }
 
   ensure() {
@@ -45,6 +47,39 @@ export class Voice {
       this.volume = volume;
       if (this.master) this.master.gain.value = volume;
     }
+    if (this.muted) this.stopSpeech();
+  }
+
+  async playSpeechWav(wav) {
+    if (this.muted || !wav?.length) return;
+    const token = ++this.speechToken;
+    this.clearSpeechSource();
+    const ctx = this.ensure();
+    if (ctx.state === 'suspended') await ctx.resume();
+    const bytes = wav instanceof Uint8Array ? wav : new Uint8Array(wav);
+    const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const buffer = await ctx.decodeAudioData(data);
+    if (token !== this.speechToken || this.muted) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.master);
+    source.onended = () => {
+      if (this.speechSource === source) this.speechSource = null;
+    };
+    this.speechSource = source;
+    source.start();
+  }
+
+  stopSpeech() {
+    this.speechToken++;
+    this.clearSpeechSource();
+  }
+
+  clearSpeechSource() {
+    if (!this.speechSource) return;
+    try { this.speechSource.stop(); } catch {}
+    this.speechSource.disconnect();
+    this.speechSource = null;
   }
 
   async loadCustom(list) {

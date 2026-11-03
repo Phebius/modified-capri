@@ -3,6 +3,7 @@ import { FxLayer, GRAB_FRAMES } from './fx.js';
 import { Chip, Mask } from './chip.js';
 import { Panel } from './panel.js';
 import { Voice } from './voice.js';
+import { SpokenSpeech } from './speech.js';
 import { Brain } from './brain.js';
 import { Guide } from './guide.js';
 import { Mission } from './mission.js';
@@ -33,6 +34,43 @@ const WATCH_MS = 2000; // how often she checks the pointer still reaches her
 const FOLLOW_AFTER = 2; // checks in a row with the pointer on another screen before she follows it there
 const AWAY_MS = 15 * 60 * 1000; // the pointer still this long: you were away from your PC
 const SNOOZE_MS = 10 * 60 * 1000;
+const FISH_SETUP_TEXT = {
+  fr: {
+    line: 'Colle ta clé API Fish Audio pour activer la voix que tu as choisie.',
+    placeholder: 'Clé API Fish Audio', send: 'Enregistrer', close: 'Fermer', noteTag: 'CLÉ',
+    note: 'Crée une clé sur fish.audio/app/api-keys. Elle sera chiffrée par le système. Pour la retirer : menu Son > Oublier la clé Fish Audio.',
+    saved: 'Clé Fish Audio enregistrée. Capri utilisera maintenant la voix choisie.',
+    cleared: 'Clé Fish Audio supprimée.', failed: 'Impossible d’enregistrer la clé Fish Audio.',
+  },
+  en: {
+    line: 'Paste your Fish Audio API key to enable the voice you selected.',
+    placeholder: 'Fish Audio API key', send: 'Save', close: 'Close', noteTag: 'KEY',
+    note: 'Create a key at fish.audio/app/api-keys. It will be encrypted by the system. To remove it, use Sound > Forget Fish Audio key.',
+    saved: 'Fish Audio key saved. Capri will now use your selected voice.',
+    cleared: 'Fish Audio key removed.', failed: 'Could not save the Fish Audio key.',
+  },
+  es: {
+    line: 'Pega tu clave API de Fish Audio para activar la voz elegida.',
+    placeholder: 'Clave API de Fish Audio', send: 'Guardar', close: 'Cerrar', noteTag: 'CLAVE',
+    note: 'Crea una clave en fish.audio/app/api-keys. El sistema la cifrará. Para borrarla, usa Sonido > Olvidar la clave de Fish Audio.',
+    saved: 'Clave guardada. Capri usará la voz elegida.',
+    cleared: 'Clave de Fish Audio eliminada.', failed: 'No se pudo guardar la clave de Fish Audio.',
+  },
+  pt: {
+    line: 'Cole sua chave API do Fish Audio para ativar a voz escolhida.',
+    placeholder: 'Chave API do Fish Audio', send: 'Salvar', close: 'Fechar', noteTag: 'CHAVE',
+    note: 'Crie uma chave em fish.audio/app/api-keys. O sistema vai criptografá-la. Para removê-la, use Som > Esquecer a chave do Fish Audio.',
+    saved: 'Chave salva. Capri usará a voz escolhida.',
+    cleared: 'Chave do Fish Audio removida.', failed: 'Não foi possível salvar a chave do Fish Audio.',
+  },
+  ru: {
+    line: 'Вставьте ключ Fish Audio API, чтобы включить выбранный голос.',
+    placeholder: 'Ключ Fish Audio API', send: 'Сохранить', close: 'Закрыть', noteTag: 'КЛЮЧ',
+    note: 'Создайте ключ на fish.audio/app/api-keys. Система зашифрует его. Чтобы удалить ключ, выберите «Звук» > «Удалить ключ Fish Audio».',
+    saved: 'Ключ Fish Audio сохранён. Capri будет использовать выбранный голос.',
+    cleared: 'Ключ Fish Audio удалён.', failed: 'Не удалось сохранить ключ Fish Audio.',
+  },
+};
 
 // what you made her, from the config (custom.js)
 const mine = (cfg) => ({ userName: cfg.userName || '', persona: cfg.persona || '', myLines: cfg.myLines || [], memories: cfg.memories || [] });
@@ -85,6 +123,9 @@ async function boot() {
     ticker: document.getElementById('ticker'),
     labels: linesFor(config.lang, config.assistant),
   });
+  const speech = new SpokenSpeech({ host, voice, onProgress: (progress) => panel.setSpeechProgress(progress) });
+  speech.configure(config);
+  panel.onSpeak = (text) => speech.speak(text);
 
   const capri = new Capri({
     root: document.getElementById('capri'),
@@ -623,6 +664,7 @@ async function boot() {
 
   host.onConfig((cfg) => {
     voice.configure(cfg);
+    speech.configure(cfg);
     jealousy.enabled = cfg.jealous !== false;
     jealousy.closePages = cfg.closePages !== false;
     followOn = cfg.follow !== false;
@@ -676,6 +718,59 @@ async function boot() {
       case 'setupKey': // "API key or address" in her menu's AI model, or a service picked there that needs one
         setup.key();
         break;
+      case 'fishSetup': {
+        const copy = FISH_SETUP_TEXT[brain.lang] || FISH_SETUP_TEXT.en;
+        const shown = panel.say({
+          kind: 'info',
+          face: 'look',
+          tag: 'FISH AUDIO',
+          line: copy.line,
+          guide: true,
+          chat: {
+            placeholder: copy.placeholder,
+            send: copy.send,
+            close: copy.close,
+            noteTag: copy.noteTag,
+            note: copy.note,
+            secret: true,
+          },
+          onLeave: () => host.focusOverlay(false),
+          onSend: async (key) => {
+            panel.setChatBusy(true);
+            try {
+              const result = await host.setFishAudioKey(key);
+              if (!result?.ok) throw new Error(result?.error || copy.failed);
+              panel.say({
+                kind: result.cleared ? 'info' : 'done',
+                line: result.cleared ? copy.cleared : copy.saved,
+                speak: false,
+                hold: 6000,
+              });
+            } catch (err) {
+              panel.say({ kind: 'error', line: err?.message || copy.failed, speak: false, hold: 8000 });
+            }
+          },
+        });
+        if (shown) {
+          host.focusOverlay(true);
+          setTimeout(() => panel.chatInput.focus(), 150);
+        }
+        break;
+      }
+      case 'fishClear': {
+        try {
+          const result = await host.setFishAudioKey('');
+          panel.say({
+            kind: result?.ok ? 'info' : 'error',
+            line: result?.ok ? (FISH_SETUP_TEXT[brain.lang] || FISH_SETUP_TEXT.en).cleared : result?.error || 'Fish Audio key could not be removed.',
+            speak: false,
+            hold: 6000,
+          });
+        } catch (err) {
+          panel.say({ kind: 'error', line: err?.message || 'Fish Audio key could not be removed.', speak: false, hold: 8000 });
+        }
+        break;
+      }
       case 'setupFree': // --dev: Claude Code (or Codex) through Ollama
         setup.free();
         break;
@@ -844,7 +939,7 @@ async function boot() {
   const hooks = await host.hooksStatus();
   // her welcome: the first time, or while she's meant to watch Claude Code and isn't plugged into it
   if (!config.welcomed || (config.claude && !hooks.installed)) guide.welcome();
-  else panel.say({ kind: 'info', line: brain.onlineLine(), hold: 4000 });
+  else panel.say({ kind: 'info', line: brain.onlineLine(), hold: 4000, speak: true });
 
   // In the evening, after a real day's work, she brings you her report card once, on her own,
   // at a quiet moment.

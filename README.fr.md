@@ -377,7 +377,11 @@ C'est aussi dans le menu de l'icône, dans sa langue ; en ligne de commande c'es
 
 ## Sons
 
-Tous les sons sont synthétisés en direct (Web Audio), rien n'est fourni sous droits.
+Tous les effets sonores sont synthétisés en direct (Web Audio), aucun son protégé n'est fourni avec le projet.
+Les annonces importantes et les réponses de son chat passent par la synthèse Fish Audio avec l'identifiant vocal choisi pour Capri.
+Dans le menu de l'icône, ouvre **Son** › **Créer une clé Fish Audio…**, puis **Configurer la clé Fish Audio…** et colle ta clé API Fish Audio ; Capri la chiffre
+avec le stockage sécurisé du système. **Lire les annonces à voix haute** active ou coupe la voix, qui suit aussi le réglage Muet.
+Le texte prononcé est envoyé à Fish Audio pour la synthèse ; la voix nécessite une connexion Internet et un accès à Fish Audio.
 Tu peux mettre tes propres fichiers dans le dossier des sons perso (menu › Son › *Ouvrir le dossier des sons perso*),
 avec ces noms (`.mp3`, `.wav`, `.ogg` ou `.m4a`) :
 
@@ -541,7 +545,8 @@ src/renderer/js/
   files.js               chercher tes fichiers (l'index de recherche de Windows), les captures d'écran
   lines.js               ce qu'elle dit (FR / EN / ES / PT / RU)
   chip.js                son masque : quand elle dort, et en bas à gauche quand tu la ranges
-  voice.js               les sons
+  voice.js               les effets sonores
+  speech.js              synthèse Fish Audio pour les annonces importantes et le chat
 ```
 
 Pour bosser dessus : `npm run dev` active des routes de debug sur le bridge (`/debug/capture` enregistre une image de la fenêtre dans `captures/`,
@@ -562,3 +567,5 @@ l'utiliser, la modifier et partager ce que tu as fait, gratuitement. Vendre Capr
 son code (clés, abonnements, accès payant, commandes payantes), est interdit. Les versions jusqu'à la 0.4.3 étaient sous licence MIT.
 
 Polices : Chakra Petch et JetBrains Mono, sous licence SIL Open Font License, via Fontsource.
+
+La synthèse utilise [Fish Audio](https://fish.audio/developers/) avec l'identifiant vocal `370054c08fe7423190c4bef3c2f1902b`.

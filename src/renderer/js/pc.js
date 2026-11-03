@@ -58,8 +58,8 @@ export class Pc {
     return this.enabled && this.capri.mode !== 'alert' && !this.chat.open && !this.guide.running;
   }
 
-  say(line, face = 'smug', hold = 4500) {
-    if (this.quiet) this.panel.say({ kind: 'info', face, line, hold });
+  say(line, face = 'smug', hold = 4500, speak = false) {
+    if (this.quiet) this.panel.say({ kind: 'info', face, line, hold, speak });
   }
 
   // waits a few seconds for her to be free to move, if she's busy
@@ -86,7 +86,7 @@ export class Pc {
     this.hot = true;
     this.hotAt = now;
     this.capri.wake();
-    this.say(fmt(pick(this.t.hot), { cpu }), 'wide', 5000);
+    this.say(fmt(pick(this.t.hot), { cpu }), 'wide', 5000, true);
     this.voice.play('charge');
     if (await this.whenFree()) this.capri.perform('overheat');
   }
@@ -121,7 +121,7 @@ export class Pc {
     if (at >= this.warned) return;
     this.warned = at;
     this.capri.wake();
-    this.say(fmt(pick(at === 0.05 ? this.t.critical : this.t.low), { level: Math.round(level * 100) }), 'aside', 6000);
+    this.say(fmt(pick(at === 0.05 ? this.t.critical : this.t.low), { level: Math.round(level * 100) }), 'aside', 6000, true);
     if (await this.whenFree()) this.capri.drain();
   }
 
@@ -132,7 +132,7 @@ export class Pc {
       if (navigator.onLine || !this.enabled) return;
       this.cutOff = true;
       this.voice.play('error');
-      this.say(pick(this.t.offline), 'wide', 5000);
+      this.say(pick(this.t.offline), 'wide', 5000, true);
       this.capri.hurt();
     }, 4000);
   }
