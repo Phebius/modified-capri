@@ -220,7 +220,11 @@ Whatever you asked her, a stamp under the answer says who she was when she read 
 companion, and if the command failed, the stamp goes red too. The mode stays hers after the console closes (it's in
 her settings file). She signs a mode switch herself: she splits into her minds and comes back whole on companion,
 looks you up and down on code viewer. `Ctrl+C` stops a running command, ↑ walks your history, `Ctrl+L` clears,
-`Escape` tucks the terminal away, `exit` closes it. Typed `help` gets you cmd's list, and hers at the end.
+`Escape` tucks the terminal away, `exit` closes it. Typed `help` gets you cmd's list, and hers at the end. Her
+window wears her colours: a strip up top where her face and the mode she's in keep watch, and down in the corner
+she sits — at her post when idle, at the computer while a command runs, talking back when she answers, split into
+her minds when a mode changes. Her pointer lives in that window too: the artist's pink arrow, twitching through her
+HUD's glitch, and only there — the rest of your desktop keeps your own cursor.
 
 **She looks at your screen**, if you want. Her menu › **Look at my screen**: her eyes go to the window in front, a
 scanline sweeps it, and she tells you what she makes of it, her way. **Look at my screen now and then** lets her do it

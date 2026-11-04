@@ -42,6 +42,7 @@ const DEFAULTS = {
   watchScreen: false, // she looks at your screen now and then and says something about it (look.js)
   lookAsked: false,  // she told you what looking means (where the picture goes) and you said yes
   capriMode: 'code_viewer', // her mode: 'code_viewer' (the calm one, everything she does now) or 'companion' (she reaches into your apps)
+  terminalIntro: false, // she has given you the tour of her terminal (the first time it opens)
 };
 
 let cache = null;

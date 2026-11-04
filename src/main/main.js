@@ -1113,11 +1113,32 @@ function main() {
       workArea: () => targetDisplay().workArea,
       mode: () => config.load().capriMode || 'code_viewer',
       setMode: (mode) => updateConfig({ capriMode: mode }),
+      // her terminal speaks in her own voice, in the language you picked for her
+      lang: () => resolveLang(config.load().lang),
+      tutorial: () => !config.load().terminalIntro,
+      tutorialDone: () => updateConfig({ terminalIntro: true }),
+      speak: async (text) => {
+        const cfg = config.load();
+        if (cfg.spokenVoice === false || cfg.muted) return null;
+        const service = getCapriSpeech();
+        if (!service.hasApiKey()) return null;
+        return service.speak(String(text || '').slice(0, 520));
+      },
       // whatever her terminal answered, Capri in the overlay signs that she heard
       onResult: (result) => sendCommand('terminalPulse', {
         capriCommand: Boolean(result.capri),
         mode: result.mode || config.load().capriMode || 'code_viewer',
       }),
+      // where her terminal is, in the overlay's pixels: the overlay stops asking for a pointer
+      // over it, so the click-through window can't flicker the desktop cursor back into the cmd
+      window: (rect) => {
+        const o = overlay && !overlay.isDestroyed() ? overlay.getBounds() : null;
+        sendCommand('terminalWindow', {
+          rect: rect && o
+            ? { x: rect.x - o.x, y: rect.y - o.y, w: rect.width, h: rect.height }
+            : null,
+        });
+      },
     });
     llm.restoreClaude(readMemory().claude);
     refreshModels(); // for her menu's model list

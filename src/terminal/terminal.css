@@ -10,19 +10,118 @@ html, body {
   font: 13px/1.45 'Cascadia Mono', Consolas, 'Courier New', monospace;
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+  --cap: #36ff7a; /* her mode's colour: terminal.js sets data-mode */
+}
+body[data-mode="companion"] { --cap: #ff2a4a; }
+body[data-mode="code_viewer"] { --cap: #36ff7a; }
+
+/* the mouse is hers here: her glitching arrow takes the real pointer's place */
+body.is-cursor, body.is-cursor * { cursor: none; }
+
+/* Her HUD over the console: her face, her name, the mode she stands in, and her pulse. The rest
+   stays a cmd: black, monospace, what the command answered. */
+.term__hud {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cap) 45%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--cap) 16%, transparent), transparent 58%),
+    #0a0a0a;
+  color: var(--cap);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  user-select: none;
+}
+
+.term__face {
+  width: 20px;
+  height: 20px;
+  border: 1px solid color-mix(in srgb, var(--cap) 55%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--cap) 35%, transparent);
+  animation: capri-face 5s steps(1) infinite;
+}
+
+.term__name { font-weight: 600; text-shadow: 0 0 8px color-mix(in srgb, var(--cap) 60%, transparent); }
+.term__slash { color: #6b6678; }
+.term__mode { opacity: 0.85; }
+
+.term__pulse {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cap);
+  box-shadow: 0 0 9px var(--cap);
+  animation: capri-pulse 2.4s steps(2) infinite;
+}
+
+@keyframes capri-face {
+  0%, 92%, 100% { transform: translate(0, 0); filter: none; }
+  93% { transform: translate(-1px, 1px); filter: hue-rotate(24deg); }
+  95% { transform: translate(1px, -1px); filter: saturate(1.6); }
+  97% { transform: translate(0, 0); filter: none; }
+}
+
+@keyframes capri-pulse {
+  0%, 70% { opacity: 1; }
+  71%, 100% { opacity: 0.2; }
+}
+
 #term {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   box-sizing: border-box;
   padding: 8px 12px 4px;
   overflow-y: auto;
   overflow-x: hidden;
-  cursor: text;
 }
 
-.term__lines { white-space: pre-wrap; overflow-wrap: break-word; }
+/* Her, in the corner, the way the site shows her: a presence that breathes through the console.
+   Screen-blended so the gif's black square melts into the black cmd; she never takes a click and
+   the lines paint over her. */
+.term__presence {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 86%, transparent 100%);
+  transition: opacity 0.35s ease;
+}
+
+@media (max-width: 560px) {
+  .term__presence { width: 96px; height: 96px; right: 6px; bottom: 6px; opacity: 0.45; }
+}
+
+/* a soft CRT breath over everything, the lines still on top of it */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px);
+}
+
+.term__lines { position: relative; z-index: 1; white-space: pre-wrap; overflow-wrap: break-word; }
 .term__lines > div { min-height: 1.45em; }
 
-.term__row { display: flex; margin: 0; }
+.term__row { position: relative; z-index: 1; display: flex; margin: 0; }
 
 .term__prompt { color: #cccccc; white-space: pre; }
 
@@ -35,6 +134,33 @@ html, body {
   color: #cccccc;
   font: inherit;
   padding: 0;
+  caret-color: #ff2e88;
+}
+
+/* Her pointer, only in her terminal: the artist's cursor from capri-desktop, its tip on the
+   mouse, twitching through the glitch frames the way her HUD does. terminal.js slides it. */
+.term__cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  z-index: 10;
+  background: url('../../assets/cursor/cursor-sheet.png') no-repeat 0 0 / 384px 32px;
+  animation: capri-cursor 1.68s steps(12) infinite;
+  will-change: transform;
+}
+.term__cursor.is-off { opacity: 0; animation-play-state: paused; }
+
+@keyframes capri-cursor {
+  from { background-position: 0 0; }
+  to { background-position: -384px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term__cursor { animation: none; }
+  .term__face, .term__pulse, .stamp, .banner { animation: none; }
 }
 
 /* lines and kinds */
@@ -93,4 +219,149 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .stamp, .banner { animation: none; }
+}
+
+/* ---------- her tutorial ---------- */
+
+/* The layer her body lives in. Front: she flies over the text. Behind: the text paints over
+   her, so she passes through the console instead of on top of it. */
+.term__tutorial {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.term__tutorial.is-behind { z-index: 0; }
+.term__tutorial[hidden] { display: none; }
+
+.term__tut-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 16px rgba(255, 33, 82, 0.4));
+  transition: opacity 320ms ease;
+}
+.term__tut-body canvas,
+.term__tut-fallback { display: block; }
+.term__tut-fallback { width: 112px; height: auto; }
+
+/* She is happy to see you: a slanted band with her waving close-up, in over the console and
+   out again before the lesson. */
+.term__cutin {
+  position: fixed;
+  inset: 13% -9% 23% -9%;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+  background: #14101c;
+  border-top: 2px solid #ff2152;
+  border-bottom: 2px solid #ff2152;
+  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
+  transform: translateX(112%) skewX(-6deg);
+  transition: transform 240ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.term__cutin.is-in { transform: translateX(0) skewX(-6deg); }
+.term__cutin.is-out { transform: translateX(-112%) skewX(-6deg); transition-duration: 220ms; }
+.term__cutin[hidden] { display: none; }
+.term__cutin img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 34%;
+}
+.term__cutin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px);
+  mix-blend-mode: screen;
+}
+.term__cutin-tag {
+  position: absolute;
+  left: 7%;
+  bottom: 12px;
+  padding: 3px 10px;
+  background: #14101c;
+  border-left: 3px solid #ff2152;
+  color: #ffb3c4;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+}
+
+/* Her voice, written under her: a band in her mode's colour, low enough not to cover the prompt. */
+.term__caption {
+  position: fixed;
+  left: 50%;
+  bottom: 44px;
+  z-index: 8;
+  max-width: min(78%, 640px);
+  margin: 0;
+  padding: 8px 16px 9px 17px;
+  background: rgba(10, 10, 10, 0.94);
+  border-left: 3px solid var(--cap);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--cap) 34%, transparent),
+    0 10px 30px rgba(0, 0, 0, 0.55);
+  color: #f4eef2;
+  font-size: 12.5px;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translate(-50%, 10px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+.term__caption.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+/* The laser she points with: a thin red beam from her hand and a live dot on the target. */
+.term__laser {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.term__laser.is-on { opacity: 1; }
+.term__laser-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(255, 33, 82, 0), #ff2152 16%, #ffd9e2 94%, #ffffff);
+  box-shadow: 0 0 8px rgba(255, 33, 82, 0.9), 0 0 22px rgba(255, 33, 82, 0.5);
+}
+.term__laser-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff2a4a;
+  box-shadow: 0 0 10px #ff2a4a, 0 0 24px rgba(255, 42, 74, 0.75);
+  animation: capri-laser 820ms steps(2) infinite;
+}
+@keyframes capri-laser {
+  0%, 62% { opacity: 1; }
+  63%, 100% { opacity: 0.55; }
+}
+
+/* The command she is explaining: lit in her mode's colour while her beam rests on it. */
+.term__lines > div.is-tut {
+  background: color-mix(in srgb, var(--cap) 15%, transparent);
+  box-shadow: inset 2px 0 0 var(--cap);
+}
+
+/* She is the show for a moment: the corner presence waits its turn. */
+body.is-tutorial .term__presence { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .term__cutin { transition-duration: 1ms; }
+  .term__caption { transition-duration: 1ms; }
+  .term__laser-dot { animation: none; }
 }

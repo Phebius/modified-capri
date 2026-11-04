@@ -188,19 +188,33 @@ async function boot() {
   // Click-through everywhere except on her body, the panel and her biochip.
   let interactive = false;
   let mouse = null;
+  let terminalRect = null; // her cmd window, in this window's pixels, while it is up and visible
   const setInteractive = (on) => {
     if (on === interactive) return;
     interactive = on;
     host.setInteractive(on);
   };
   const onChip = () => Boolean(chip.visible && mouse && chip.contains(mouse.x, mouse.y, 0));
+  // Her terminal hides the desktop pointer in its own window; a click-through window over it
+  // would put it back on every forwarded move (Electron's Windows cursor flicker), so while the
+  // pointer is down there and she is not under it, this window asks for no cursor either.
+  const inTerminal = (p) => Boolean(p && terminalRect
+    && p.x >= terminalRect.x && p.x < terminalRect.x + terminalRect.w
+    && p.y >= terminalRect.y && p.y < terminalRect.y + terminalRect.h);
+  const onTerminal = () => inTerminal(mouse);
   const refreshHit = () => {
     if (capri.dragging) return setInteractive(true);
-    if (!mouse) return setInteractive(false);
+    if (!mouse) {
+      document.body.style.cursor = '';
+      document.documentElement.classList.remove('is-term-cursor');
+      return setInteractive(false);
+    }
     const r = panel.rect();
     const onPanel = r && mouse.x >= r.left && mouse.x <= r.right && mouse.y >= r.top && mouse.y <= r.bottom;
+    const live = Boolean(onPanel || capri.hit(mouse.x, mouse.y) || onChip());
     document.body.style.cursor = onChip() ? 'pointer' : '';
-    return setInteractive(Boolean(onPanel || capri.hit(mouse.x, mouse.y) || onChip()));
+    document.documentElement.classList.toggle('is-term-cursor', !live && onTerminal());
+    return setInteractive(live);
   };
   // Her biochip: her eyes on it follow the pointer over it, and she comes out when you click it
   // (only then, so the pointer passing through that corner doesn't call her back).
@@ -250,6 +264,8 @@ async function boot() {
     const before = seen;
     seen = at;
     follow?.(at);
+    // a final say on her pointer over the cmd, if a forwarded move went missing
+    if (!inTerminal(at)) document.documentElement.classList.remove('is-term-cursor');
     if (!at?.inside) return;
     const now = performance.now();
     // the pointer is on her and she isn't clickable (its moves stopped reaching her): she is now
@@ -833,6 +849,11 @@ async function boot() {
         capri.perform(cmd.mode === 'companion' ? 'zap' : 'look', capri.towardCenter());
         break;
       }
+      case 'terminalWindow': // her cmd window opened, moved, hid or closed: where it is on this screen
+        terminalRect = cmd.rect || null;
+        if (!terminalRect && !mouse) document.body.style.cursor = '';
+        refreshHit();
+        break;
       case 'watchScreen': // "Look at my screen now and then" in her menu
         look.setAuto(cmd.on);
         break;

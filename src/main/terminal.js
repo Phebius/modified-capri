@@ -10,7 +10,9 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
 
-let hooks = null;   // { workArea(), mode(), setMode(mode), onResult(info) }, from main.js
+const ICON = path.join(__dirname, '..', '..', 'assets', 'icons', 'capri.ico');
+
+let hooks = null;   // { workArea(), mode(), lang(), tutorial(), tutorialDone(), speak(text), setMode(mode), onResult(info), window(rect) }, from main.js
 let win = null;
 let child = null;
 let registered = false;
@@ -174,6 +176,20 @@ function close() {
   killChild();
   win?.destroy();
   win = null;
+  announceWindow();
+}
+
+// Where the window is, so Capri's overlay can stay out of its pointer's way: a click-through
+// window over the console makes Windows flicker the desktop cursor back in. Null when the
+// console isn't up (or is put away), because then that patch of screen is yours again.
+function currentWindow() {
+  if (!win || win.isDestroyed() || !win.isVisible() || win.isMinimized()) return null;
+  const b = win.getContentBounds(); // the page only: the title bar keeps the desktop pointer
+  return { x: b.x, y: b.y, width: b.width, height: b.height };
+}
+
+function announceWindow() {
+  hooks?.window?.(currentWindow());
 }
 
 function toggle() {
@@ -203,6 +219,7 @@ function open() {
     show: false,
     autoHideMenuBar: true,
     title: 'C:\\WINDOWS\\system32\\cmd.exe',
+    icon: ICON,
     backgroundColor: '#0c0c0c',
     alwaysOnTop: true, // windows level only: Capri (screen-saver level) can still sit on it
     webPreferences: {
@@ -216,8 +233,11 @@ function open() {
   win.once('ready-to-show', () => {
     win?.show(); // you asked for it: it takes the focus, like cmd would
     win?.webContents.focus();
+    announceWindow();
   });
-  win.on('closed', () => { win = null; killChild(); });
+  // moved, resized, tucked away: the overlay needs the new patch to leave alone
+  for (const event of ['move', 'resize', 'show', 'hide', 'minimize', 'restore']) win.on(event, announceWindow);
+  win.on('closed', () => { win = null; killChild(); announceWindow(); });
 }
 
 // main.js wires her in once, when the app is ready.
@@ -233,9 +253,23 @@ function init(wired) {
       mode: hooks.mode(),
       release: os.release(),
       modes: MODES,
+      lang: hooks.lang?.() || 'en',
+      tutorial: Boolean(hooks.tutorial?.()),
     };
   });
   ipcMain.handle('terminal:run', (event, text) => (mine(event) ? run(text) : { ok: false }));
+  ipcMain.handle('terminal:speak', async (event, text) => {
+    if (!mine(event) || !hooks.speak) return null;
+    try {
+      return await hooks.speak(String(text || ''));
+    } catch (err) {
+      if (DEV) console.warn('[terminal] she could not speak:', err?.message || err);
+      return null;
+    }
+  });
+  ipcMain.on('terminal:tutorial-done', (event) => {
+    if (mine(event)) hooks.tutorialDone?.();
+  });
   ipcMain.on('terminal:cancel', (event) => {
     if (!mine(event)) return;
     killChild();

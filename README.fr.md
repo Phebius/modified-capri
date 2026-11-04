@@ -232,7 +232,11 @@ viewer, rouge pour companion, et si la commande a raté, le tampon se met rouge 
 console fermée (il est dans son fichier de réglages). Un changement de mode, elle le célèbre : elle se sépare en
 ses esprits et revient entière sur companion, te dévisage en te mesurant sur code viewer. `Ctrl+C` arrête une
 commande en cours, ↑ ressort ton historique, `Ctrl+L` efface, `Échap` fait disparaître le terminal, `exit` le
-ferme. Un `help` tapé comme ça donne la liste de cmd, et la sienne au bout.
+ferme. Un `help` tapé comme ça donne la liste de cmd, et la sienne au bout. Sa fenêtre porte ses couleurs : un
+bandeau en haut où veillent son visage et le mode qu'elle tient, et dans le coin elle se tient — à son poste au
+repos, à l'ordinateur pendant qu'une commande tourne, en train de te répondre quand elle parle, séparée en ses
+esprits quand un mode change. Son pointeur vit dans cette fenêtre aussi : la flèche rose de l'artiste, qui
+tressaille au rythme du glitch de son HUD, et seulement là — le reste du bureau garde le tien.
 
 **Elle regarde ton écran**, si tu veux. Son menu › **Regarde mon écran** : elle pose ses yeux sur la fenêtre qui est
 devant, une ligne de scan la balaie, et elle te dit ce qu'elle en pense, à sa façon. **Regarder mon écran de temps en

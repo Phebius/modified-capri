@@ -6,6 +6,14 @@
   <link rel="stylesheet" href="terminal.css">
 </head>
 <body>
+  <!-- her HUD over the console: her face, her name, and the mode she stands in -->
+  <header class="term__hud">
+    <img class="term__face" src="../../assets/icons/capri.png" alt="">
+    <span class="term__name">CAPRICORN</span>
+    <span class="term__slash">//</span>
+    <span id="modeTag" class="term__mode">CODE VIEWER</span>
+    <span class="term__pulse" aria-hidden="true"></span>
+  </header>
   <main id="term" class="term">
     <section id="lines" class="term__lines"></section>
     <form id="row" class="term__row" autocomplete="off">
@@ -13,6 +21,23 @@
       <input id="input" spellcheck="false" autocomplete="off" autocapitalize="off">
     </form>
   </main>
-  <script src="terminal.js" defer></script>
+  <!-- her, in the corner: idle, at the computer, answering, or split into her minds -->
+  <img id="presence" class="term__presence" src="../../assets/terminal/plugged.gif" alt="" aria-hidden="true">
+  <!-- her tutorial: she comes in, flies around the console, and shows you her commands -->
+  <div id="tutorial" class="term__tutorial is-front" hidden>
+    <div id="tut-body" class="term__tut-body"><canvas id="tut-capri"></canvas></div>
+  </div>
+  <div id="tut-laser" class="term__laser" aria-hidden="true">
+    <span id="tut-laser-line" class="term__laser-line"></span>
+    <span id="tut-laser-dot" class="term__laser-dot"></span>
+  </div>
+  <div id="tut-cutin" class="term__cutin" hidden>
+    <img id="tut-wave" src="../../assets/capri/intro-wave1.webp" alt="">
+    <span class="term__cutin-tag">CAPRICORN // ONLINE</span>
+  </div>
+  <div id="tut-caption" class="term__caption" role="status" aria-live="polite"></div>
+  <!-- her pointer: the artist's cursor, glitching, and only in this window -->
+  <div id="cursor" class="term__cursor is-off" aria-hidden="true"></div>
+  <script type="module" src="terminal.js"></script>
 </body>
 </html>

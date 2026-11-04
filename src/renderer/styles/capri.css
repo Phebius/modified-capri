@@ -95,6 +95,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* her cmd window hides the desktop pointer and draws her own: while the pointer is over it, this
+   click-through window must not ask for one either, or Windows flickers it back in (Electron's
+   forwarded-move cursor bug). It only ever lands here when she isn't under the pointer. */
+html.is-term-cursor,
+html.is-term-cursor * {
+  cursor: none !important;
+}
+
 [hidden] {
   display: none !important;
 }
