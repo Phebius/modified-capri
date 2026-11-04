@@ -29,8 +29,8 @@ const LINES = {
     hello: 'There you are. My terminal is yours.',
     intro: 'Oh, you opened me. Wait, let me show you around.',
     prompt: 'That is the prompt. That is where you type.',
-    help: 'Type help to see every command.',
-    play: 'There. Your turn.',
+    help: 'Type help to see every command :>/.',
+    play: 'There. Your turn :D/.',
     cmds: {
       'capri::companion.activate': 'Companion. I reach into your apps and come along with you.',
       'capri::code_viewer.activate': 'Code viewer. I stay calm while you work.',
