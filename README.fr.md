@@ -226,6 +226,17 @@ vit dans des lignes `capri::` :
 - `capri::code_viewer.activate` — elle repasse en **CODE VIEWER**, la calme au travail là : ta mission, ton écran,
   rien de plus. On ne tient qu'un mode à la fois : entrainer l'un, c'est ranger l'autre.
 - `capri::status` — le mode où elle est · `capri::help` — toute sa volonté, par écrit.
+- `capri::tuto` relance le tour elle-même, avec un bouton **Passer** dans le coin.
+- `capri::ask.command` ouvre son prompt de compétences : le prompt devient `capri>`, elle s'excite, et tu demandes
+  en mots simples. `clear les textes` découpe chaque ligne avec un glitch, `supprime plein de mots` fait partir
+  les mots un par un, et `glitch`, `flash`, `annule`, `aide`, `exit` sont là aussi. Elle apparaît dans un flash et
+  ses lignes s'allument en arrivant : c'est le spectacle. Les mêmes mots marchent en anglais.
+
+La première fois qu'il s'ouvre, elle te fait le tour elle-même : elle salue dans un cut-in, entre dans la console,
+fait un cercle devant le texte puis un derrière, pose son laser sur le prompt `>`, tape `help`, et désigne chaque
+commande en expliquant ce qu'elle fait, dans ta langue. Avec sa voix Fish Audio réglée, tu l'entends. Sans elle,
+ses phrases s'affichent quand même, au rythme de la lecture. Chaque ouverture suivante a droit à son signe et à un
+bonjour. Ferme la fenêtre avant la fin du tour et elle le reprendra la prochaine fois.
 
 Quoi que tu lui aies demandé, un tampon sous la réponse dit qui elle était quand elle l'a lue : verte pour code
 viewer, rouge pour companion, et si la commande a raté, le tampon se met rouge aussi. Le mode lui reste après la
@@ -569,6 +580,10 @@ src/renderer/js/
   chip.js                son masque : quand elle dort, et en bas à gauche quand tu la ranges
   voice.js               les effets sonores
   speech.js              synthèse Fish Audio pour les annonces importantes et le chat
+src/terminal/
+  terminal.js            la page console : ce que tu tapes, ses tampons, son tour, son prompt de compétences
+  tutorial.js            son tour : le cut-in, le vol, le laser, ses phrases, sa voix, le bouton passer
+  effects.js             le flash, les étincelles, le texte qui s'allume, les mots et lignes qu'elle enlève
 ```
 
 Pour bosser dessus : `npm run dev` active des routes de debug sur le bridge (`/debug/capture` enregistre une image de la fenêtre dans `captures/`,

@@ -1115,6 +1115,7 @@ function main() {
       setMode: (mode) => updateConfig({ capriMode: mode }),
       // her terminal speaks in her own voice, in the language you picked for her
       lang: () => resolveLang(config.load().lang),
+      motion: () => config.load().motion || 'auto',
       tutorial: () => !config.load().terminalIntro,
       tutorialDone: () => updateConfig({ terminalIntro: true }),
       speak: async (text) => {

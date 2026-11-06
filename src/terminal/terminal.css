@@ -13,6 +13,7 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* her flight and cut-in go past the edges: no scrollbars from them */
   --cap: #36ff7a; /* her mode's colour: terminal.js sets data-mode */
 }
 body[data-mode="companion"] { --cap: #ff2a4a; }
@@ -248,6 +249,11 @@ body::after {
 .term__tut-fallback { display: block; }
 .term__tut-fallback { width: 112px; height: auto; }
 
+/* Behind the text she sits a little further back: dimmer, so the console reads over her. */
+.term__tutorial.is-behind .term__tut-body {
+  filter: drop-shadow(0 0 16px rgba(255, 33, 82, 0.28)) brightness(0.78) saturate(0.9);
+}
+
 /* She is happy to see you: a slanted band with her waving close-up, in over the console and
    out again before the lesson. */
 .term__cutin {
@@ -291,15 +297,15 @@ body::after {
   letter-spacing: 0.22em;
 }
 
-/* Her voice, written under her: a band in her mode's colour, low enough not to cover the prompt. */
+/* Her voice, written under her: a band in her mode's colour, low in the window like subtitles. */
 .term__caption {
   position: fixed;
   left: 50%;
-  bottom: 44px;
+  bottom: 12px;
   z-index: 8;
-  max-width: min(78%, 640px);
+  max-width: min(70%, 560px);
   margin: 0;
-  padding: 8px 16px 9px 17px;
+  padding: 7px 14px 8px 15px;
   background: rgba(10, 10, 10, 0.94);
   border-left: 3px solid var(--cap);
   box-shadow:
@@ -364,4 +370,142 @@ body.is-tutorial .term__presence { opacity: 0; }
   .term__cutin { transition-duration: 1ms; }
   .term__caption { transition-duration: 1ms; }
   .term__laser-dot { animation: none; }
+}
+
+/* ---------- her effects ---------- */
+
+/* When the console opens she arrives in a flash, and the text boots in slices. */
+body.is-spawn .term__hud { animation: capri-boot 620ms steps(3) 1; }
+@keyframes capri-boot {
+  0% { opacity: 0; transform: translateY(-7px); filter: brightness(2.8); }
+  38% { opacity: 0.55; transform: translateY(2px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+.term__lines > div.is-line-in { animation: capri-line-in 260ms steps(3) 1; }
+@keyframes capri-line-in {
+  0% { opacity: 0; transform: translateX(-7px); filter: brightness(2.4) blur(1px); }
+  45% { opacity: 0.7; transform: translateX(3px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+/* A burst of light in her colour, over the console, gone in a breath. */
+.term__flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 46%,
+      color-mix(in srgb, var(--flash-color, var(--cap)) 72%, transparent) 0,
+      transparent 58%),
+    linear-gradient(90deg, transparent 0 44%,
+      color-mix(in srgb, var(--flash-color, var(--cap)) 42%, transparent) 50%,
+      transparent 56%);
+  mix-blend-mode: screen;
+}
+.term__flash.is-on { animation: capri-flash 260ms steps(4) 1; }
+@keyframes capri-flash {
+  0% { opacity: 0; }
+  12% { opacity: 0.9; }
+  35% { opacity: 0.32; }
+  100% { opacity: 0; }
+}
+
+/* Sparks thrown around the text, each one launched by effects.js. */
+.term__burst {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  overflow: hidden;
+  pointer-events: none;
+}
+.term__spark {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 1px;
+  background: var(--cap);
+  box-shadow:
+    0 0 8px var(--cap),
+    0 0 18px color-mix(in srgb, var(--cap) 55%, transparent);
+}
+
+/* A word she takes away: it flares up, tears sideways, and is gone. */
+.term__word { display: inline-block; vertical-align: baseline; }
+.term__word.is-gone { animation: capri-word-gone 380ms steps(4) forwards; }
+@keyframes capri-word-gone {
+  0% { opacity: 1; transform: none; filter: none; }
+  22% { opacity: 1; color: #ffffff; filter: brightness(2.6) hue-rotate(35deg); }
+  55% { opacity: 0.75; transform: translate(var(--dx, 12px), var(--dy, -8px)) skewX(22deg); filter: blur(1px); }
+  100% { opacity: 0; transform: translate(calc(var(--dx, 12px) * 2), calc(var(--dy, -8px) * 2)) skewX(-30deg) scale(0.4); filter: blur(4px); }
+}
+
+/* A whole line cut out of the console, one after the next. */
+.term__lines > div.is-clearing {
+  transform-origin: left center;
+  animation: capri-line-clear 460ms steps(5) forwards;
+}
+@keyframes capri-line-clear {
+  0% { opacity: 1; transform: none; filter: none; }
+  25% { opacity: 1; transform: translateX(calc(var(--dx, 30px) * 0.3)) skewX(-8deg); filter: brightness(2.2); }
+  60% { opacity: 0.65; transform: translateX(var(--dx, 60px)) skewX(18deg); filter: blur(1px) hue-rotate(45deg); }
+  100% { opacity: 0; transform: translateX(calc(var(--dx, 60px) * 1.7)) skewX(-26deg) scaleY(0.25); filter: blur(5px); }
+}
+
+/* The whole console shakes for a moment, like a signal she cannot hold. */
+body.is-glitching #term { animation: capri-term-glitch 620ms steps(2) 1; }
+body.is-glitching .term__hud { animation: capri-hud-glitch 620ms steps(2) 1; }
+@keyframes capri-term-glitch {
+  0%, 100% { transform: none; filter: none; }
+  10% { transform: translate(5px, -2px) skewX(2deg); filter: hue-rotate(45deg) contrast(1.5); }
+  24% { transform: translate(-6px, 2px) skewX(-3deg); filter: none; }
+  39% { transform: translate(3px, 0) skewX(1deg); filter: invert(0.08) brightness(1.4); }
+  56% { transform: translate(-4px, -1px) skewX(2deg); filter: hue-rotate(-35deg); }
+  72% { transform: translate(5px, 1px) skewX(-1deg); filter: none; }
+}
+@keyframes capri-hud-glitch {
+  0%, 100% { transform: none; }
+  18% { transform: translateX(-3px); filter: hue-rotate(50deg); }
+  46% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); filter: brightness(1.8); }
+}
+
+/* Her skills prompt: the same `>` idea as ollama, in her pink. */
+body.is-ask .term__prompt {
+  color: #ff2e88;
+  text-shadow: 0 0 9px rgba(255, 46, 136, 0.55);
+}
+body.is-ask .term__pulse { animation-duration: 1s; }
+
+/* The skip button she offers when you replay the tour yourself. */
+.term__tut-skip {
+  position: fixed;
+  top: 42px;
+  right: 14px;
+  z-index: 11;
+  padding: 6px 13px;
+  border: 1px solid var(--cap);
+  background: rgba(10, 10, 10, 0.92);
+  color: var(--cap);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cap) 30%, transparent);
+  pointer-events: auto;
+}
+.term__tut-skip[hidden] { display: none; }
+.term__tut-skip:hover { background: color-mix(in srgb, var(--cap) 18%, #0a0a0a); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.is-spawn .term__hud,
+  .term__lines > div.is-line-in,
+  .term__lines > div.is-clearing,
+  .term__word.is-gone,
+  body.is-glitching #term,
+  body.is-glitching .term__hud { animation: none; }
+  .term__flash.is-on { animation-duration: 1ms; }
 }

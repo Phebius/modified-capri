@@ -16,10 +16,13 @@ const LINES = {
     prompt: 'Ça, c\'est le prompt. C\'est là que tu écris.',
     help: 'Tape help pour voir toutes les commandes.',
     play: 'Voilà. À toi de jouer.',
+    skip: 'Passer',
     cmds: {
       'capri::companion.activate': 'Companion. Je touche à tes applications et je t\'accompagne.',
       'capri::code_viewer.activate': 'Code viewer. Je reste calme pendant que tu travailles.',
       'capri::status': 'Status. Je te dis dans quel mode je suis.',
+      'capri::tuto': 'Tuto. Je recommence le tour, avec un bouton pour passer.',
+      'capri::ask.command': 'Ask. J\'ouvre mon prompt de compétences : demande-moi d\'effacer ou d\'enlever des mots.',
       help: 'Help. La liste des commandes de cmd, et des miennes.',
       cls: 'Cls. J\'efface l\'écran.',
       exit: 'Exit. Je ferme mon terminal.',
@@ -29,12 +32,15 @@ const LINES = {
     hello: 'There you are. My terminal is yours.',
     intro: 'Oh, you opened me. Wait, let me show you around.',
     prompt: 'That is the prompt. That is where you type.',
-    help: 'Type help to see every command :>/.',
-    play: 'There. Your turn :D/.',
+    help: 'Type help to see every command.',
+    play: 'There. Your turn.',
+    skip: 'Skip',
     cmds: {
       'capri::companion.activate': 'Companion. I reach into your apps and come along with you.',
       'capri::code_viewer.activate': 'Code viewer. I stay calm while you work.',
       'capri::status': 'Status. It tells you which mode I am in.',
+      'capri::tuto': 'Tuto. I run the tour again, with a button to skip it.',
+      'capri::ask.command': 'Ask. I open my skills prompt: ask me to clear lines or take words away.',
       help: 'Help. cmd\'s commands, and mine.',
       cls: 'Cls. I clear the screen.',
       exit: 'Exit. I close my terminal.',
@@ -42,7 +48,7 @@ const LINES = {
   },
 };
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const lerp = (a, b, k) => a + (b - a) * k;
 const easeOut = (k) => 1 - Math.pow(1 - k, 3);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -88,8 +94,9 @@ class SpeechAudio {
 }
 
 export class Tutorial {
-  constructor({ lang = 'en', onDone = null } = {}) {
+  constructor({ lang = 'en', motion = 'auto', onDone = null } = {}) {
     this.t = LINES[lang] || LINES.en;
+    this.motion = motion;
     this.onDone = onDone;
     this.layer = document.getElementById('tutorial');
     this.body = document.getElementById('tut-body');
@@ -100,6 +107,7 @@ export class Tutorial {
     this.captionEl = document.getElementById('tut-caption');
     this.cutinEl = document.getElementById('tut-cutin');
     this.waveEl = document.getElementById('tut-wave');
+    this.skipEl = document.getElementById('tut-skip');
     this.linesEl = document.getElementById('lines');
     this.audio = new SpeechAudio();
     this.renderer = null;
@@ -109,19 +117,95 @@ export class Tutorial {
     this.scale = 0.4;
     this.running = false;
     this.pointing = false;
+    this.speaking = false;
+    this.speechToken = 0;
+    this.skipped = false;
+    this.skippable = false;
+    this.skipResolve = null;
+    this.skipPromise = Promise.resolve();
     this.waves = ['wave1', 'wave3', 'wave2', 'wave3'];
     this.frame = requestAnimationFrame.bind(window);
     this.raf = 0;
+    this.skipEl?.addEventListener('click', (event) => {
+      event.preventDefault();
+      this.skip();
+    });
+    // Escape places the skip anywhere on the page, even when the button kept the focus.
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !this.running || !this.skippable || this.skipped) return;
+      event.preventDefault();
+      this.skip();
+    });
+  }
+
+  // A fresh run: the skip latch is rearmed, and the button only appears for a replay.
+  begin(replay = false) {
+    this.skipped = false;
+    this.skippable = Boolean(replay);
+    this.skipPromise = new Promise((resolve) => { this.skipResolve = resolve; });
+    if (this.skipEl) {
+      this.skipEl.textContent = this.t.skip;
+      this.skipEl.hidden = !this.skippable;
+    }
+  }
+
+  // Sleep, but wake at once if she is skipped.
+  pause(ms) {
+    if (this.skipped) return Promise.resolve();
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(finish, ms);
+      this.skipPromise.then(finish);
+    });
+  }
+
+  // The button (or Escape, from terminal.js) ends the replay where it stands.
+  skip() {
+    if (!this.running || !this.skippable || this.skipped) return false;
+    this.skipped = true;
+    this.skipResolve?.();
+    this.audio.stop();
+    this.stopDrawing();
+    this.laserOff();
+    this.pointing = false;
+    this.captionEl.classList.remove('is-on');
+    this.cutinEl.hidden = true;
+    this.layer.hidden = true;
+    this.body.style.opacity = '0';
+    document.body.classList.remove('is-tutorial');
+    this.linesEl.querySelectorAll('.is-tut').forEach((node) => node.classList.remove('is-tut'));
+    if (this.skipEl) this.skipEl.hidden = true;
+    return true;
   }
 
   reduced() {
+    if (this.motion === 'reduced') return true;
+    if (this.motion === 'full') return false;
     return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   }
 
   async prepare() {
+    // A replay reuses the rig from the first open; only the drawing loop needs waking again.
+    if (this.renderer || this.fallback) {
+      if (this.renderer) this.resize();
+      this.startDrawing();
+      return;
+    }
     const image = new Image();
     image.src = `${ART}/capri-full.png`;
-    await image.decode().catch(() => {});
+    // Decode her wave and her happy face before the band slides in, so no frame flickers empty.
+    const cutin = [...new Set([...this.waves, 'happy'])].map((name) => {
+      const frame = new Image();
+      frame.src = `${ART}/intro-${name}.webp`;
+      return frame.decode().catch(() => {});
+    });
+    await Promise.all([image.decode().catch(() => {}), ...cutin]);
     try {
       this.renderer = new SpriteRenderer(this.canvas, image);
       this.resize();
@@ -144,7 +228,7 @@ export class Tutorial {
   }
 
   resize() {
-    const scale = clamp(window.innerHeight / 470, 0.7, 1.15) * 0.4;
+    const scale = clamp(window.innerHeight / 470, 0.8, 1.15) * 0.55;
     this.scale = scale;
     this.renderer.resize(scale);
     const s = SpriteRenderer.cssSize(scale);
@@ -205,11 +289,30 @@ export class Tutorial {
   tween(ms, fn) {
     return new Promise((resolve) => {
       const started = performance.now();
+      let done = false;
+      let fallback = 0;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(fallback);
+        fn(1);
+        resolve();
+      };
+      // The window covered or minimised stops requestAnimationFrame: the timer lands the move
+      // anyway, so a tour never freezes halfway through.
+      fallback = setTimeout(finish, ms + 160);
       const step = (now) => {
+        if (done) return;
+        if (this.skipped) {
+          done = true;
+          clearTimeout(fallback);
+          resolve();
+          return;
+        }
         const k = Math.min(1, (now - started) / ms);
         fn(k);
         if (k < 1) this.frame(step);
-        else resolve();
+        else finish();
       };
       this.frame(step);
     });
@@ -218,24 +321,70 @@ export class Tutorial {
   async show() {
     this.layer.hidden = false;
     this.layer.className = 'term__tutorial is-front';
-    this.body.style.opacity = '1';
+    this.body.style.opacity = '0';
     document.body.classList.add('is-tutorial');
   }
 
   async say(text) {
+    if (this.running && this.skipped) return;
+    const token = ++this.speechToken;
     this.captionEl.textContent = text;
     this.captionEl.classList.add('is-on');
     let played = false;
     try {
-      const audio = await window.terminal.speak(text);
+      // Never let a slow voice hold the lesson: past twelve seconds her line reads on its own.
+      // This timeout is local, not the skip latch: a line spoken outside the tour must still play.
+      const audio = await Promise.race([
+        window.terminal.speak(text),
+        sleep(12000).then(() => null),
+      ]);
+      if (token !== this.speechToken) return;
       if (audio?.wav?.length) played = await this.audio.play(audio.wav);
     } catch {}
-    if (!played) await wait(Math.max(1400, text.length * 58));
-    await wait(240);
+    if (this.running && this.skipped) return;
+    if (token !== this.speechToken) return;
+    if (!played) {
+      const hold = Math.max(1400, text.length * 58);
+      await (this.running ? this.pause(hold) : sleep(hold));
+    }
+    await (this.running ? this.pause(240) : sleep(240));
+    if (token === this.speechToken) this.captionEl.classList.remove('is-on');
+  }
+
+  // You typed over her: stop the voice and pull the caption before it covers your answer.
+  hush() {
+    this.audio.stop();
     this.captionEl.classList.remove('is-on');
   }
 
+  // A single spoken line outside the tour: the skills prompt, her replies.
+  async voice(text) {
+    if (this.speaking) return false;
+    this.speaking = true;
+    try {
+      await this.say(text);
+      return true;
+    } finally {
+      this.speaking = false;
+    }
+  }
+
+  // She is happy you asked for her skills: the cut-in and her excited line, no lesson attached.
+  async celebrate(text) {
+    if (this.running) return false;
+    this.running = true;
+    this.begin(false);
+    try {
+      const speech = this.say(text);
+      await this.cutin(false, speech);
+      return true;
+    } finally {
+      this.cleanup();
+    }
+  }
+
   async cutin(first, speech) {
+    if (this.skipped) return;
     this.cutinEl.hidden = false;
     this.cutinEl.classList.remove('is-in', 'is-out');
     let i = 0;
@@ -246,31 +395,33 @@ export class Tutorial {
       i += 1;
       this.waveEl.src = `${ART}/intro-${this.waves[i % this.waves.length]}.webp`;
     }, 140);
-    await wait(first ? 1300 : 1100);
+    await this.pause(first ? 1300 : 1100);
     clearInterval(frames);
     this.waveEl.src = `${ART}/intro-happy.webp`;
-    await wait(first ? 560 : 420);
+    await this.pause(first ? 560 : 420);
     this.cutinEl.classList.remove('is-in');
     this.cutinEl.classList.add('is-out');
-    await wait(250);
+    await this.pause(250);
     this.cutinEl.hidden = true;
     this.cutinEl.classList.remove('is-out');
-    await speech;
+    if (!this.skipped) await speech;
   }
 
   async enter(reduced) {
+    if (this.skipped) return;
     const w = window.innerWidth;
     const h = window.innerHeight;
+    const o = this.orbit();
     if (reduced) {
-      const o = this.orbit();
       this.setPose(o.cx - o.s.w / 2, o.cy - o.s.h / 2, 0);
-      await wait(320);
+      this.body.style.opacity = '1';
+      await this.pause(320);
       return;
     }
-    const o = this.orbit();
     const from = { x: w + 24, y: h * 0.62, rot: -38 };
     const to = { x: o.cx - o.s.w / 2, y: o.cy - o.ry - o.s.h / 2, rot: 0 };
     this.setPose(from.x, from.y, from.rot);
+    this.body.style.opacity = '1';
     await this.tween(500, (k) => {
       const e = easeOut(k);
       this.setPose(lerp(from.x, to.x, e), lerp(from.y, to.y, e), lerp(from.rot, to.rot, e));
@@ -281,14 +432,15 @@ export class Tutorial {
     const w = window.innerWidth;
     const h = window.innerHeight;
     return {
-      cx: w * 0.44,
-      cy: h * 0.4,
-      rx: Math.max(80, w * 0.2),
-      ry: Math.max(58, h * 0.16),
+      cx: w * 0.39,
+      cy: h * 0.43,
+      rx: Math.max(90, w * 0.16),
+      ry: Math.max(52, h * 0.14),
       s: this.size,
     };
   }
 
+  // She banks into the turn instead of looping head over heels: a fly-by, not a somersault.
   async circle(ms) {
     const o = this.orbit();
     await this.tween(ms, (k) => {
@@ -296,7 +448,7 @@ export class Tutorial {
       this.setPose(
         o.cx + Math.cos(a) * o.rx - o.s.w / 2,
         o.cy + Math.sin(a) * o.ry - o.s.h / 2,
-        (a * 180) / Math.PI + 90,
+        Math.cos(a) * 18,
       );
     });
   }
@@ -339,64 +491,82 @@ export class Tutorial {
   }
 
   async toPrompt(reduced) {
+    if (this.skipped) return;
     const r = document.getElementById('prompt').getBoundingClientRect();
-    const target = { x: r.right + 8, y: r.top + r.height / 2 };
+    // The dot rests on the `>` itself, and she stands off to the right so the beam has a run.
+    const target = { x: r.right - 5, y: r.top + r.height / 2 };
     this.pointing = true;
-    const x = target.x - 80 * this.scale;
-    const y = target.y - 268 * this.scale;
+    const x = target.x + 140 - 80 * this.scale;
+    const y = Math.max(6, target.y - 34 - 268 * this.scale);
     await this.moveTo(x, y, -4, reduced ? 280 : 680);
     this.laserAt(target);
   }
 
   async guide(reduced) {
+    if (this.skipped) return;
     this.laserOff();
-    await this.moveTo(window.innerWidth - this.size.w - 16, window.innerHeight * 0.42, 0, reduced ? 280 : 560);
+    await this.moveTo(window.innerWidth - this.size.w - 14, window.innerHeight * 0.38, 0, reduced ? 280 : 560);
   }
 
   async leave(reduced) {
+    if (this.skipped) return;
     this.laserOff();
     this.pointing = false;
     const x = window.innerWidth - this.size.w - 2;
     const y = window.innerHeight - this.size.h - 2;
     await this.moveTo(x, y, 0, reduced ? 240 : 680);
     this.body.style.opacity = '0';
-    await wait(320);
+    await this.pause(320);
     this.layer.hidden = true;
     document.body.classList.remove('is-tutorial');
   }
 
   async full(reduced) {
     const t = this.t;
+    if (this.skipped) return;
     const intro = this.say(t.intro);
     await this.cutin(true, intro);
+    if (this.skipped) return;
     await this.enter(reduced);
+    if (this.skipped) return;
     if (!reduced) {
       await this.circle(1700);
+      if (this.skipped) return;
       this.layer.className = 'term__tutorial is-behind';
       await this.circle(1400);
+      if (this.skipped) return;
       this.layer.className = 'term__tutorial is-front';
     }
     await this.toPrompt(reduced);
+    if (this.skipped) return;
     await this.say(t.prompt);
+    if (this.skipped) return;
+    await this.guide(reduced);
+    if (this.skipped) return;
 
     const help = this.say(t.help);
-    await this.typeHelp();
-    await help;
+    await this.typeHelp(() => this.skipped);
+    if (!this.skipped) await help;
+    if (this.skipped) return;
 
-    await this.guide(reduced);
     for (const [cmd, line] of Object.entries(t.cmds)) {
+      if (this.skipped) break;
       const target = [...this.linesEl.children].find((node) => node.textContent.trim().startsWith(cmd));
       if (!target) continue;
+      this.laserOff();
       target.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
-      await wait(reduced ? 60 : 300);
+      await this.pause(reduced ? 60 : 300);
+      if (this.skipped) break;
       const r = target.getBoundingClientRect();
       this.laserAt({ x: Math.max(18, r.left + 10), y: r.top + r.height / 2 });
       target.classList.add('is-tut');
       await this.say(line);
       target.classList.remove('is-tut');
     }
+    if (this.skipped) return;
     this.laserOff();
     await this.say(t.play);
+    if (this.skipped) return;
     await this.leave(reduced);
   }
 
@@ -407,26 +577,52 @@ export class Tutorial {
     this.layer.hidden = true;
   }
 
-  async start({ first = false, typeHelp = async () => {} } = {}) {
+  // The window came back (Escape tucked it away, the menu brought it up): just the wave and hello.
+  async greet() {
     if (this.running) return false;
     this.running = true;
+    this.begin(false);
+    try {
+      await this.show();
+      await this.quick();
+      return true;
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  cleanup() {
+    this.running = false;
+    this.skippable = false;
+    this.stopDrawing();
+    this.audio.stop();
+    this.laserOff();
+    this.pointing = false;
+    this.captionEl.classList.remove('is-on');
+    this.cutinEl.hidden = true;
+    this.layer.hidden = true;
+    document.body.classList.remove('is-tutorial');
+    this.body.style.opacity = '0';
+    this.linesEl.querySelectorAll('.is-tut').forEach((node) => node.classList.remove('is-tut'));
+    if (this.skipEl) this.skipEl.hidden = true;
+  }
+
+  async start({ first = false, replay = false, typeHelp = async () => {} } = {}) {
+    if (this.running) return false;
+    this.running = true;
+    this.begin(replay);
     this.typeHelp = typeHelp;
     try {
       await this.prepare();
+      if (this.skipped) return true;
       await this.show();
+      if (this.skipped) return true;
       if (first) await this.full(this.reduced());
       else await this.quick();
-      if (first) this.onDone?.();
+      if (first && !this.skipped) this.onDone?.();
       return true;
     } finally {
-      this.running = false;
-      this.stopDrawing();
-      this.laserOff();
-      this.captionEl.classList.remove('is-on');
-      this.cutinEl.hidden = true;
-      this.layer.hidden = true;
-      document.body.classList.remove('is-tutorial');
-      this.body.style.opacity = '0';
+      this.cleanup();
     }
   }
 }

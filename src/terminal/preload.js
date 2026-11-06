@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('terminal', {
   tutorialDone: () => ipcRenderer.send('terminal:tutorial-done'),
   onChunk: (cb) => ipcRenderer.on('terminal:chunk', (_e, chunk) => cb(chunk)),
   onResult: (cb) => ipcRenderer.on('terminal:result', (_e, result) => cb(result)),
+  onShown: (cb) => ipcRenderer.on('terminal:shown', () => cb()),
 });

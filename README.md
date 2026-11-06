@@ -215,6 +215,17 @@ it in her mode's colour, CAPRICORN signing that it went through. Her own will li
 - `capri::code_viewer.activate` — she switches back to **CODE VIEWER**, the calm one at work now: your mission,
   your screen, nothing more. Switching one in switches the other off: one mode at a time.
 - `capri::status` — the mode she stands in · `capri::help` — her whole will, in writing.
+- `capri::tuto` replays the tour herself, with a **Skip** button in the corner.
+- `capri::ask.command` opens her skills prompt: the prompt turns into `capri>`, she gets excited, and you ask in
+  plain words. `clear the text` cuts every line out with a glitch, `remove a lot of words` burns words away one by
+  one, and `glitch`, `flash`, `undo`, `help`, `exit` are there too. She spawns in a flash and her lines boot in;
+  that is the show. The same words work in French.
+
+The first time it opens, she gives you the tour herself: she waves from a cut-in, flies into the console, circles
+once in front of the text and once behind it, puts her laser on the `>` prompt, types `help`, and points at each
+command while she explains it in your language. With her Fish Audio voice set up, you hear her. Without it, her
+lines still show, timed to read. Every later open gets the wave and a hello. Close the window before the tour ends
+and she starts it again next time.
 
 Whatever you asked her, a stamp under the answer says who she was when she read it: green for code viewer, red for
 companion, and if the command failed, the stamp goes red too. The mode stays hers after the console closes (it's in
@@ -541,6 +552,10 @@ src/renderer/js/
   chip.js                her mask: while she sleeps, and bottom left when you put her away
   voice.js               sound effects
   speech.js              Fish Audio TTS for important announcements and chat
+src/terminal/
+  terminal.js            the console page: what you type, her stamps, her first-time tour, her skills prompt
+  tutorial.js            her tour: the cut-in, the flight, the laser, her lines, her voice, the skip
+  effects.js             the flash, the sparks, the text booting in, words and rows she takes away
 ```
 
 To hack on it: `npm run dev` turns on debug routes on the bridge (`/debug/capture` saves a frame of the window to `captures/`,

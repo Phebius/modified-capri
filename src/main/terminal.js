@@ -12,7 +12,7 @@ const { spawn } = require('node:child_process');
 
 const ICON = path.join(__dirname, '..', '..', 'assets', 'icons', 'capri.ico');
 
-let hooks = null;   // { workArea(), mode(), lang(), tutorial(), tutorialDone(), speak(text), setMode(mode), onResult(info), window(rect) }, from main.js
+let hooks = null;   // { workArea(), mode(), lang(), motion(), tutorial(), tutorialDone(), speak(text), setMode(mode), onResult(info), window(rect) }, from main.js
 let win = null;
 let child = null;
 let registered = false;
@@ -47,8 +47,9 @@ function commandArgs(text) {
     : { file: process.env.SHELL || '/bin/sh', args: ['-c', text] };
 }
 
-// capri:: lines. `action` optional: companion.activate | companion.deactivate | status | help.
-// Only the two modes exist, and only one of them at a time: switching one in switches the other off.
+// capri:: lines. `action` optional: companion.activate | companion.deactivate | status | help |
+// tuto | ask.command. Only the two modes exist, and only one of them at a time: switching one in
+// switches the other off. `tuto` and `ask.command` are handed to the page, which owns the show.
 function capriResult(text) {
   const m = /^capri::([\w-]+)(?:\.([\w-]+))?$/.exec(String(text || '').trim());
   if (!m) return null;
@@ -64,12 +65,22 @@ function capriResult(text) {
         { text: '        switches her to CODE VIEWER: the calm one, while she works', cls: 'dim' },
         { text: 'capri::status', cls: 'hl' },
         { text: '        the mode she is in', cls: 'dim' },
+        { text: 'capri::tuto', cls: 'hl' },
+        { text: '        runs her tour again, with a button to skip it', cls: 'dim' },
+        { text: 'capri::ask.command', cls: 'hl' },
+        { text: '        opens her skills prompt: clear lines, take words away', cls: 'dim' },
         { text: 'help               the commands of cmd.exe, and hers', cls: '' },
         { text: 'cls                clears the screen', cls: '' },
         { text: 'exit               closes her terminal', cls: '' },
         { text: 'Anything else runs like in cmd.exe (dir, ipconfig, ping...).', cls: 'dim' },
       ] },
     };
+  }
+  if (lower === 'tuto') {
+    return { capri: { kind: 'tuto', mode: hooks.mode() } };
+  }
+  if (lower === 'ask' && action.toLowerCase() === 'command') {
+    return { capri: { kind: 'ask', mode: hooks.mode() } };
   }
   if (lower === 'status' || lower === 'mode') {
     const mode = hooks.mode();
@@ -96,7 +107,7 @@ function capriResult(text) {
   }
   return {
     capri: { kind: 'error', mode: hooks.mode(), lines: [
-      { text: `capri::${lower}: unknown. The modes are: companion, code_viewer.`, cls: 'err' },
+      { text: `capri::${lower}: unknown. Modes: companion, code_viewer. Commands: tuto, ask.command.`, cls: 'err' },
       { text: 'Try: capri::help', cls: 'dim' },
     ] },
   };
@@ -237,6 +248,10 @@ function open() {
   });
   // moved, resized, tucked away: the overlay needs the new patch to leave alone
   for (const event of ['move', 'resize', 'show', 'hide', 'minimize', 'restore']) win.on(event, announceWindow);
+  // brought back after Escape: she says hello again, the page is still the same
+  win.on('show', () => {
+    if (win && !win.isDestroyed()) win.webContents.send('terminal:shown');
+  });
   win.on('closed', () => { win = null; killChild(); announceWindow(); });
 }
 
@@ -254,6 +269,7 @@ function init(wired) {
       release: os.release(),
       modes: MODES,
       lang: hooks.lang?.() || 'en',
+      motion: hooks.motion?.() || 'auto',
       tutorial: Boolean(hooks.tutorial?.()),
     };
   });
